@@ -85,6 +85,10 @@ useOptionsModule = input.bool(true, "Enable Options Intelligence", group="Option
 strikeInterval = input.int(50, "Strike Interval", minval=10, maxval=200, group="Options Intelligence")
 hedgeWidth     = input.int(2, "Hedge Width (strikes away)", minval=1, maxval=5, group="Options Intelligence")
 
+// ─── SUPERTREND ───
+stFactor = input.float(3.0, "Supertrend Factor", minval=1, maxval=5, group="Supertrend")
+stATRLen = input.int(10, "Supertrend ATR Length", minval=5, maxval=30, group="Supertrend")
+
 // ─── MODULE 13: CHART DISPLAY ───
 showDashboard = input.bool(true, "Show Dashboard", group="Display")
 tableSizeInput = input.string("Medium", "Dashboard Size", 
@@ -121,6 +125,36 @@ isSideways = not trendUp and not trendDown
 marketBias = trendUp ? "BULLISH" : trendDown ? "BEARISH" : "SIDEWAYS"
 biasColor  = trendUp ? color.new(color.green,0) : trendDown ? color.new(color.red,0) : color.new(color.gray,0)
 trendStrengthLabel = adxVal >= strongAdxLevel ? "STRONG" : adxVal >= 15 ? "MODERATE" : "WEAK"
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SUPERTREND CALCULATION (FIXED)
+// ═══════════════════════════════════════════════════════════════════════════
+
+f_supertrend(factor, atrlen) =>
+    hl2 = (high + low) / 2
+    atr = ta.atr(atrlen)
+    matr = factor * atr
+    
+    var float upTrend = hl2 - matr
+    var float dnTrend = hl2 + matr
+    
+    upTrend = math.max(upTrend, hl2[1] - matr[1]) 
+    dnTrend = math.min(dnTrend, hl2[1] + matr[1])
+    
+    var string trend = "up"
+    
+    if close <= upTrend
+        trend := "up"
+        dnTrend := hl2 + matr
+    else if close >= dnTrend
+        trend := "down"
+        upTrend := hl2 - matr
+    
+    [upTrend, dnTrend, trend]
+
+[superUp, superDown, supertrendDir] = f_supertrend(stFactor, stATRLen)
+supertrendLong = supertrendDir == "up"
+supertrendShort = supertrendDir == "down"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MODULE 2: MARKET STRUCTURE & PIVOT POINTS
@@ -260,7 +294,7 @@ sigEMA = close > emaHigh ? 10 : close < emaLow ? 0 : 5
 sigVWAP = close > vwapVal ? 8 : close < vwapVal ? 0 : 4
 sigRSI = rsiVal > 55 ? 6 : rsiVal < 45 ? 0 : 3
 sigADX = adxVal > adxThreshold ? 10 : adxVal > 15 ? 5 : 0
-sigSupertrend = close > ta.supertrend(3.0, 10)[0] ? 8 : 0
+sigSupertrend = supertrendLong ? 8 : 0
 sigBOS = bosUp ? 12 : 0
 sigFVG = not na(fvg_up) ? 8 : 0
 sigOrderBlock = not na(orderBlockBuy) ? 10 : 0
@@ -347,8 +381,8 @@ orbOK_buy  = na(orbHigh) or close > orbHigh
 orbOK_sell = na(orbLow)  or close < orbLow
 
 // Composite Filter
-buyFilterOK  = close > vwapVal and rsiVal > 50 and diPlus > diMinus and adxVal > adxThreshold and volOK and srOK_buy and dailyLimitOK and orbOK_buy and mtfOK_buy and volatilityOK and institutionalOK and ribbonWideEnough
-sellFilterOK = close < vwapVal and rsiVal < 50 and diMinus > diPlus and adxVal > adxThresholdSell and volOK and srOK_sell and dailyLimitOK and orbOK_sell and mtfOK_sell and volatilityOK and institutionalOK and ribbonWideEnough
+buyFilterOK  = close > vwapVal and rsiVal > 50 and diPlus > diMinus and adxVal > adxThreshold and volOK and srOK_buy and dailyLimitOK and orbOK_buy and mtfOK_buy and volatilityOK and institutionalOK and ribbonWideEnough and supertrendLong
+sellFilterOK = close < vwapVal and rsiVal < 50 and diMinus > diPlus and adxVal > adxThresholdSell and volOK and srOK_sell and dailyLimitOK and orbOK_sell and mtfOK_sell and volatilityOK and institutionalOK and ribbonWideEnough and supertrendShort
 
 noActivePosition = strategy.position_size == 0
 buyTrigger  = buyArmed and not na(buyRefHigh[1]) and high > buyRefHigh[1] and buyFilterOK and inSession and (noActivePosition or strategy.position_size < 0)
@@ -442,9 +476,7 @@ pL = plot(emaLow,  "EMA Low",  color=color.new(color.blue, 0), linewidth=1)
 fill(pH, pL, color = trendUp ? color.new(color.green,85) : trendDown ? color.new(color.red,85) : color.new(color.gray,85))
 plot(vwapVal, "VWAP", color=color.new(color.purple, 40), linewidth=1)
 
-stLine = ta.supertrend(3.0, 10)[0]
-stDir = ta.supertrend(3.0, 10)[1]
-plot(stLine, "Supertrend", color = stDir < 0 ? color.new(color.green,0) : color.new(color.red,0), linewidth=1)
+plot(supertrendLong ? superUp : superDown, "Supertrend", color = supertrendLong ? color.new(color.green,0) : color.new(color.red,0), linewidth=1)
 
 // Draw Support/Resistance Levels
 plot(na(lastResistance) ? na : lastResistance, "Resistance", color=color.new(color.red, 40), linewidth=2, style=plot.style_line)
@@ -484,7 +516,8 @@ if showDashboard and barstate.islast
     r = 0
     
     // Header
-    table.cell(dash, 0, r, "🤖 NIFTY PRO AI v7.0", text_color=color.white, bgcolor=color.new(color.navy,50), text_size=tblSize, colspan=2)
+    table.cell(dash, 0, r, "🤖 NIFTY PRO AI v7.0", text_color=color.white, bgcolor=color.new(color.navy,50), text_size=tblSize)
+    table.cell(dash, 1, r, "", text_color=color.white, bgcolor=color.new(color.navy,50))
     r += 1
     
     // Signal Status
