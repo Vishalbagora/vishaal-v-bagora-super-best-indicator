@@ -16,7 +16,7 @@ strategy("NIFTY PRO AI SUITE v7.0", overlay=true, initial_capital=100000, defaul
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUTS
-// ═══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════��════════════════════════════════════════
 
 // CORE
 emaLen = input.int(21, "EMA Length", minval=5, maxval=50, group="CORE")
@@ -101,14 +101,14 @@ f_st(fact, len) =>
     var float dn = hl2 + matr
     up := math.max(up, hl2[1] - matr[1])
     dn := math.min(dn, hl2[1] + matr[1])
-    var str tr = "up"
+    var trendState = "up"
     if close <= up
-        tr := "up"
+        trendState := "up"
         dn := hl2 + matr
     else if close >= dn
-        tr := "down"
+        trendState := "down"
         up := hl2 - matr
-    [up, dn, tr]
+    [up, dn, trendState]
 
 [stUp, stDn, stTr] = f_st(stFact, stAtr)
 stLong = stTr == "up"
