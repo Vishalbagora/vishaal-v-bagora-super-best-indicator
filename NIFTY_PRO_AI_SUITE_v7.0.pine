@@ -16,7 +16,7 @@ strategy("NIFTY PRO AI SUITE v7.0", overlay=true, initial_capital=100000, defaul
 
 // ═══════════════════════════════════════════════════════════════════════════
 // INPUTS
-// ══════════════════════════════════��════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 
 // CORE
 emaLen = input.int(21, "EMA Length", minval=5, maxval=50, group="CORE")
@@ -61,8 +61,18 @@ stAtr = input.int(10, "ST ATR Length", minval=5, maxval=30, group="SUPERTREND")
 
 // DISPLAY
 showDash = input.bool(true, "Show Dashboard", group="DISPLAY")
+dashSize = input.string("Medium", "Dashboard Size", options=["Small", "Medium", "Large", "XLarge"], group="DISPLAY")
+dashPos = input.string("Top Right", "Dashboard Position", options=["Top Left", "Top Right", "Bottom Left", "Bottom Right"], group="DISPLAY")
 showChart = input.bool(true, "Show Chart Elements", group="DISPLAY")
 enableAlerts = input.bool(true, "Enable Alerts", group="DISPLAY")
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DASHBOARD SIZE & POSITION
+// ═══════════════════════════════════════════════════════════════════════════
+
+tSize = dashSize == "Small" ? size.tiny : dashSize == "Medium" ? size.small : dashSize == "Large" ? size.normal : size.large
+
+tPos = dashPos == "Top Left" ? position.top_left : dashPos == "Top Right" ? position.top_right : dashPos == "Bottom Left" ? position.bottom_left : position.bottom_right
 
 // ═══════════════════════════════════════════════════════════════════════════
 // CORE INDICATORS
@@ -186,9 +196,9 @@ dH = request.security(syminfo.tickerid, "D", high[1], lookahead=barmerge.lookahe
 dL = request.security(syminfo.tickerid, "D", low[1], lookahead=barmerge.lookahead_off)
 piv = (dH + dL) / 2
 r1 = (2 * piv) - dL
-s1 = (2 * piv) - dH
+inst_s1 = (2 * piv) - dH
 
-instOk = (close > s1) and (close < r1)
+instOk = (close > inst_s1) and (close < r1)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // VOLUME
@@ -213,19 +223,19 @@ bps = atm - (hedgeWid * strikeInt)
 // AI DECISION ENGINE
 // ═══════════════════════════════════════════════════════════════════════════
 
-s1 = close > emaHigh ? 10 : 0
-s2 = close > vwap ? 8 : 0
-s3 = rsi > 55 ? 6 : 0
-s4 = adx > adxThresh ? 10 : 0
-s5 = stLong ? 8 : 0
-s6 = bosU ? 12 : 0
-s7 = fvgU ? 8 : 0
-s8 = obBuy ? 10 : 0
-s9 = volOk ? 8 : 0
-s10 = mtfOk ? 10 : 0
-s11 = (not na(lastSup)) ? 10 : 0
+sig1 = close > emaHigh ? 10 : 0
+sig2 = close > vwap ? 8 : 0
+sig3 = rsi > 55 ? 6 : 0
+sig4 = adx > adxThresh ? 10 : 0
+sig5 = stLong ? 8 : 0
+sig6 = bosU ? 12 : 0
+sig7 = fvgU ? 8 : 0
+sig8 = obBuy ? 10 : 0
+sig9 = volOk ? 8 : 0
+sig10 = mtfOk ? 10 : 0
+sig11 = (not na(lastSup)) ? 10 : 0
 
-totalScore = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9 + s10 + s11
+totalScore = sig1 + sig2 + sig3 + sig4 + sig5 + sig6 + sig7 + sig8 + sig9 + sig10 + sig11
 maxSc = 119
 conf = math.round((totalScore / maxSc) * 100, 1)
 
@@ -391,125 +401,125 @@ if sellTr and showChart
     label.new(bar_index, high, "🔴\n" + str.tostring(math.round(slS, 0)) + "/" + str.tostring(math.round(t1S, 0)), style=label.style_label_down, color=color.new(color.red, 0), textcolor=color.white, size=size.small)
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DASHBOARD
+// DASHBOARD - WITH SIZE & POSITION OPTIONS
 // ═══════════════════════════════════════════════════════════════════════════
 
 if showDash and barstate.islast
-    var table t = table.new(position.top_right, 2, 40, bgcolor=color.new(color.black, 20), border_width=2, border_color=color.gray)
+    var table t = table.new(tPos, 2, 40, bgcolor=color.new(color.black, 20), border_width=2, border_color=color.gray)
     
     r = 0
     
-    table.cell(t, 0, r, "🤖 NIFTY PRO v7.0", text_color=color.white, bgcolor=color.new(color.navy, 50), text_size=size.small)
+    table.cell(t, 0, r, "🤖 NIFTY PRO v7.0", text_color=color.white, bgcolor=color.new(color.navy, 50), text_size=tSize)
     table.cell(t, 1, r, "", text_color=color.white, bgcolor=color.new(color.navy, 50))
     r += 1
     
-    table.cell(t, 0, r, "STATUS", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, sigStat, text_color=color.white, bgcolor=statCol, text_size=size.small)
+    table.cell(t, 0, r, "STATUS", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, sigStat, text_color=color.white, bgcolor=statCol, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "TREND", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, bias + " (" + strength + ")", text_color=biasCol, text_size=size.small)
+    table.cell(t, 0, r, "TREND", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, bias + " (" + strength + ")", text_color=biasCol, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "CONFIDENCE", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(conf) + "% [" + qual + "]", text_color=color.white, bgcolor=qualCol, text_size=size.small)
+    table.cell(t, 0, r, "CONFIDENCE", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(conf) + "% [" + qual + "]", text_color=color.white, bgcolor=qualCol, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "ADX/RSI", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(math.round(adx, 1)) + "/" + str.tostring(math.round(rsi, 1)), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, r, "ADX/RSI", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(math.round(adx, 1)) + "/" + str.tostring(math.round(rsi, 1)), text_color=color.white, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "DI+/DI-", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(math.round(diPlus, 1)) + "/" + str.tostring(math.round(diMinus, 1)), text_color=diPlus > diMinus ? color.green : color.red, text_size=size.small)
+    table.cell(t, 0, r, "DI+/DI-", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(math.round(diPlus, 1)) + "/" + str.tostring(math.round(diMinus, 1)), text_color=diPlus > diMinus ? color.green : color.red, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "MTF", text_color=color.white, bgcolor=color.new(color.teal, 20), text_size=size.small)
-    table.cell(t, 1, r, mtfTxt, text_color=mtfCol, text_size=size.small)
+    table.cell(t, 0, r, "MTF", text_color=color.white, bgcolor=color.new(color.teal, 20), text_size=tSize)
+    table.cell(t, 1, r, mtfTxt, text_color=mtfCol, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "1m/5m/15m/30m/1h", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, t1 + "/" + t5 + "/" + t15 + "/" + t30 + "/" + t60, text_color=color.white, text_size=size.small)
+    table.cell(t, 0, r, "1m/5m/15m/30m/1h", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, t1 + "/" + t5 + "/" + t15 + "/" + t30 + "/" + t60, text_color=color.white, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "PRICE", text_color=color.white, bgcolor=color.new(color.purple, 30), text_size=size.small)
-    table.cell(t, 1, r, str.tostring(math.round(close, 0)), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, r, "PRICE", text_color=color.white, bgcolor=color.new(color.purple, 30), text_size=tSize)
+    table.cell(t, 1, r, str.tostring(math.round(close, 0)), text_color=color.white, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "SUP", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, na(lastSup) ? "-" : str.tostring(math.round(lastSup, 0)), text_color=color.green, text_size=size.small)
+    table.cell(t, 0, r, "SUP", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, na(lastSup) ? "-" : str.tostring(math.round(lastSup, 0)), text_color=color.green, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "RES", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, na(lastRes) ? "-" : str.tostring(math.round(lastRes, 0)), text_color=color.red, text_size=size.small)
+    table.cell(t, 0, r, "RES", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, na(lastRes) ? "-" : str.tostring(math.round(lastRes, 0)), text_color=color.red, text_size=tSize)
     r += 1
     
     if strategy.position_size > 0
-        table.cell(t, 0, r, "ENTRY", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(strategy.opentrades.entry_price(0), 0)), text_color=color.white, text_size=size.small)
+        table.cell(t, 0, r, "ENTRY", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(strategy.opentrades.entry_price(0), 0)), text_color=color.white, text_size=tSize)
         r += 1
         
-        table.cell(t, 0, r, "SL", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(slB, 0)), text_color=color.red, text_size=size.small)
+        table.cell(t, 0, r, "SL", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(slB, 0)), text_color=color.red, text_size=tSize)
         r += 1
         
-        table.cell(t, 0, r, "T1", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(t1B, 0)), text_color=color.lime, text_size=size.small)
+        table.cell(t, 0, r, "T1", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(t1B, 0)), text_color=color.lime, text_size=tSize)
         r += 1
         
-        table.cell(t, 0, r, "T2", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(t2B, 0)), text_color=color.green, text_size=size.small)
+        table.cell(t, 0, r, "T2", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(t2B, 0)), text_color=color.green, text_size=tSize)
         r += 1
     
     else if strategy.position_size < 0
-        table.cell(t, 0, r, "ENTRY", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(strategy.opentrades.entry_price(0), 0)), text_color=color.white, text_size=size.small)
+        table.cell(t, 0, r, "ENTRY", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(strategy.opentrades.entry_price(0), 0)), text_color=color.white, text_size=tSize)
         r += 1
         
-        table.cell(t, 0, r, "SL", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(slS, 0)), text_color=color.red, text_size=size.small)
+        table.cell(t, 0, r, "SL", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(slS, 0)), text_color=color.red, text_size=tSize)
         r += 1
         
-        table.cell(t, 0, r, "T1", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(t1S, 0)), text_color=color.lime, text_size=size.small)
+        table.cell(t, 0, r, "T1", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(t1S, 0)), text_color=color.lime, text_size=tSize)
         r += 1
         
-        table.cell(t, 0, r, "T2", text_color=color.white, text_size=size.small)
-        table.cell(t, 1, r, str.tostring(math.round(t2S, 0)), text_color=color.green, text_size=size.small)
+        table.cell(t, 0, r, "T2", text_color=color.white, text_size=tSize)
+        table.cell(t, 1, r, str.tostring(math.round(t2S, 0)), text_color=color.green, text_size=tSize)
         r += 1
     
-    table.cell(t, 0, r, "OPTIONS", text_color=color.white, bgcolor=color.new(color.orange, 30), text_size=size.small)
+    table.cell(t, 0, r, "OPTIONS", text_color=color.white, bgcolor=color.new(color.orange, 30), text_size=tSize)
     table.cell(t, 1, r, "", bgcolor=color.new(color.orange, 30))
     r += 1
     
-    table.cell(t, 0, r, "ATM", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(atm), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, r, "ATM", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(atm), text_color=color.white, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "Bull Call", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, "B" + str.tostring(atm) + "/S" + str.tostring(bcs), text_color=color.green, text_size=size.small)
+    table.cell(t, 0, r, "Bull Call", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, "B" + str.tostring(atm) + "/S" + str.tostring(bcs), text_color=color.green, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "Bear Put", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, "B" + str.tostring(bps) + "/S" + str.tostring(atm), text_color=color.red, text_size=size.small)
+    table.cell(t, 0, r, "Bear Put", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, "B" + str.tostring(bps) + "/S" + str.tostring(atm), text_color=color.red, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "FILTERS", text_color=color.white, bgcolor=color.new(color.navy, 20), text_size=size.small)
+    table.cell(t, 0, r, "FILTERS", text_color=color.white, bgcolor=color.new(color.navy, 20), text_size=tSize)
     table.cell(t, 1, r, "", bgcolor=color.new(color.navy, 20))
     r += 1
     
-    table.cell(t, 0, r, "Volume", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, volTxt, text_color=volOk ? color.green : color.red, text_size=size.small)
+    table.cell(t, 0, r, "Volume", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, volTxt, text_color=volOk ? color.green : color.red, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "ATR", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(math.round(atr, 1)), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, r, "ATR", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(math.round(atr, 1)), text_color=color.white, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "Session", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, inSess ? "OPEN ✅" : "CLOSED ❌", text_color=inSess ? color.green : color.red, text_size=size.small)
+    table.cell(t, 0, r, "Session", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, inSess ? "OPEN ✅" : "CLOSED ❌", text_color=inSess ? color.green : color.red, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "PERFORMANCE", text_color=color.white, bgcolor=color.new(color.purple, 30), text_size=size.small)
+    table.cell(t, 0, r, "PERFORMANCE", text_color=color.white, bgcolor=color.new(color.purple, 30), text_size=tSize)
     table.cell(t, 1, r, "", bgcolor=color.new(color.purple, 30))
     r += 1
     
@@ -517,20 +527,20 @@ if showDash and barstate.islast
     w_trades = strategy.wintrades
     wr = t_trades > 0 ? (w_trades / t_trades) * 100 : 0
     
-    table.cell(t, 0, r, "Trades", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(t_trades), text_color=color.white, text_size=size.small)
+    table.cell(t, 0, r, "Trades", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(t_trades), text_color=color.white, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "Win Rate", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(math.round(wr, 1)) + "%", text_color=wr >= 50 ? color.green : color.red, text_size=size.small)
+    table.cell(t, 0, r, "Win Rate", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(math.round(wr, 1)) + "%", text_color=wr >= 50 ? color.green : color.red, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "Trades Today", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(dayTr) + "/" + str.tostring(maxTrades), text_color=dayTr < maxTrades ? color.green : color.red, text_size=size.small)
+    table.cell(t, 0, r, "Trades Today", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(dayTr) + "/" + str.tostring(maxTrades), text_color=dayTr < maxTrades ? color.green : color.red, text_size=tSize)
     r += 1
     
-    table.cell(t, 0, r, "Daily P&L", text_color=color.white, text_size=size.small)
-    table.cell(t, 1, r, str.tostring(math.round(dayLossPct, 2)) + "%", text_color=dayLossPct >= -maxLoss ? color.green : color.red, text_size=size.small)
+    table.cell(t, 0, r, "Daily P&L", text_color=color.white, text_size=tSize)
+    table.cell(t, 1, r, str.tostring(math.round(dayLossPct, 2)) + "%", text_color=dayLossPct >= -maxLoss ? color.green : color.red, text_size=tSize)
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ALERTS
